@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hire Sense AI — Real-time AI Interview Coach with emotion detection and speech analysis.">
+    <title>Hire Sense AI — Interview Coach</title>
+    <link rel="stylesheet" href="{% static 'coach/css/dashboard.css' %}">
+</head>
+<body>
+
+    <!-- ── Navbar ────────────────────────────────────────────────────── -->
+    <nav class="navbar">
+        <a href="/" class="navbar__brand">
+            <div class="navbar__logo">HS</div>
+            <div class="navbar__title">Hire<span>Sense</span> AI</div>
+        </a>
+        <div class="navbar__status">
+            <span id="video-status-dot" class="status-dot"></span>
+            <span>Vision</span>
+            <span style="margin: 0 4px; color: var(--text-muted);">|</span>
+            <span id="audio-status-dot" class="status-dot"></span>
+            <span>Audio</span>
+        </div>
+    </nav>
+
+    <!-- ── Controls ──────────────────────────────────────────────────── -->
+    <div class="main-container">
+        <!-- ════════════════════ LEFT COLUMN ════════════════════ -->
+        <div class="left-column">
+            <div class="controls-row">
+                <button id="btn-video" class="btn">
+                    <span class="btn__icon">📷</span>
+                    <span class="btn__label">Start Camera</span>
+                </button>
+                <button id="btn-audio" class="btn">
+                    <span class="btn__icon">🎙️</span>
+                    <span class="btn__label">Start Microphone</span>
+                </button>
+                <button id="btn-clear" class="btn">
+                    <span class="btn__icon">🗑️</span>
+                    <span class="btn__label">Clear Transcript</span>
+                </button>
+            </div>
+
+            <!-- Vision Engine Card -->
+            <div class="card">
+                <div class="card__header">
+                    <div class="card__title">
+                        <div class="card__title-icon vision">👁️</div>
+                        Vision Engine
+                    </div>
+                </div>
+
+                <div class="video-container">
+                    <canvas id="video-canvas" style="display: none;"></canvas>
+                    <div id="video-placeholder" class="video-placeholder">
+                        <div class="video-placeholder__icon">📷</div>
+                        <div>Click <strong>Start Camera</strong> to begin</div>
+                    </div>
+                </div>
+
+                <div class="score-section">
+                    <div class="score-card">
+                        <div class="score-card__label">Confidence Score</div>
+                        <div id="score-value" class="score-card__value low">0/10</div>
+                    </div>
+                    <div class="score-card">
+                        <div class="score-card__label">Detected Emotion</div>
+                        <div id="emotion-value" class="score-card__value" style="font-size: 1.3rem; color: var(--text-accent);">Waiting</div>
+                        <div id="emotion-prob" class="score-card__sub">-</div>
+                    </div>
+                    <div class="score-card">
+                        <div class="score-card__label">Faces Detected</div>
+                        <div id="faces-value" class="score-card__value" style="font-size: 1.8rem; color: var(--text-secondary);">0</div>
+                    </div>
+                    <div class="score-card">
+                        <div class="score-card__label">Model</div>
+                        <div class="score-card__value" style="font-size: 0.9rem; color: var(--text-muted);">emotion_model.h5</div>
+                        <div class="score-card__sub">7 Emotions CNN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════════════════════ RIGHT COLUMN ════════════════════ -->
+        <div class="right-column">
+            <!-- Audio Engine Card -->
+            <div class="card">
+                <div class="card__header">
+                    <div class="card__title">
+                        <div class="card__title-icon audio">🎙️</div>
+                        Audio Engine
+                    </div>
+                </div>
+
+                <!-- Transcript -->
+                <div id="transcript-box" class="transcript-box">
+                    <p class="transcript-placeholder">Listening... transcript will appear as you speak.</p>
+                </div>
+            </div>
+
+            <!-- Vocal Metrics Card -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card__header">
+                    <div class="card__title">
+                        <div class="card__title-icon metrics">📊</div>
+                        Vocal Performance
+                    </div>
+                </div>
+
+                <div class="metric-bar">
+                    <div class="metric-bar__header">
+                        <span class="metric-bar__label">Vocal Smoothness</span>
+                        <span id="smoothness-value" class="metric-bar__value">0%</span>
+                    </div>
+                    <div class="metric-bar__track">
+                        <div id="smoothness-fill" class="metric-bar__fill smoothness" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="metric-bar">
+                    <div class="metric-bar__header">
+                        <span class="metric-bar__label">Clarity</span>
+                        <span id="clarity-value" class="metric-bar__value">0%</span>
+                    </div>
+                    <div class="metric-bar__track">
+                        <div id="clarity-fill" class="metric-bar__fill clarity" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="metric-bar">
+                    <div class="metric-bar__header">
+                        <span class="metric-bar__label">Tone Stability</span>
+                        <span id="tone-value" class="metric-bar__value">0%</span>
+                    </div>
+                    <div class="metric-bar__track">
+                        <div id="tone-fill" class="metric-bar__fill tone" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Audio Details -->
+                <div id="audio-details" class="audio-details">
+                    <strong>Status:</strong> Waiting for microphone...
+                </div>
+
+                <!-- Error Banner -->
+                <div id="error-banner" class="error-banner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Scripts ────────────────────────────────────────────────────── -->
+    <script src="{% static 'coach/js/video_stream.js' %}"></script>
+    <script src="{% static 'coach/js/audio_stream.js' %}"></script>
+    <script src="{% static 'coach/js/dashboard.js' %}"></script>
+
+</body>
+</html>

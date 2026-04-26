@@ -1,0 +1,27 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Django
+db.sqlite3
+*.sqlite3
+media/
+
+# ML models (large files — track separately or use Git LFS)
+ml_models/*.h5
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

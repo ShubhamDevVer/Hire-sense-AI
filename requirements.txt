@@ -1,0 +1,19 @@
+# Django core
+django>=5.0,<6.0
+channels>=4.0,<5.0
+daphne>=4.0,<5.0
+
+# Environment
+python-dotenv>=1.0
+
+# Computer Vision & ML
+opencv-python>=4.8
+tensorflow>=2.15
+numpy>=1.24
+
+# Audio analysis
+librosa>=0.10
+soundfile>=0.12
+
+# Groq API (Whisper transcription)
+groq>=0.4
