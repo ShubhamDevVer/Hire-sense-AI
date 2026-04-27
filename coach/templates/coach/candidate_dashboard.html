@@ -1,0 +1,217 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hire Sense AI — Your AI-powered interview coaching portal.">
+    <title>Dashboard — Hire Sense AI</title>
+    <link rel="stylesheet" href="{% static 'coach/css/candidate_dashboard.css' %}">
+</head>
+<body>
+
+<div class="layout">
+
+    <!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+    <aside class="sidebar">
+        <div class="sidebar__top">
+
+            <!-- Brand -->
+            <a href="{% url 'candidate_dashboard' %}" class="brand">
+                <div class="brand__icon">HS</div>
+                <div class="brand__name">Hire<span>Sense</span> AI</div>
+            </a>
+
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    {{ request.user.username|first|upper }}
+                </div>
+                <div class="profile-info">
+                    <div class="profile-info__name">{{ request.user.username }}</div>
+                    <div class="profile-info__role">Candidate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="sidebar__stats">
+            <div class="stat-chip">
+                <div class="stat-chip__val">{{ result_count }}</div>
+                <div class="stat-chip__label">Interviews</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip__val">
+                    {% if best_score %}{{ best_score }}/10{% else %}—{% endif %}
+                </div>
+                <div class="stat-chip__label">Best Score</div>
+            </div>
+        </div>
+
+        <!-- Past interview history -->
+        <div class="sidebar__section-title">Past Interviews</div>
+
+        {% if past_results %}
+        <div class="history-list">
+            {% for result in past_results %}
+            <div class="history-item">
+                <div class="history-item__header">
+                    <span class="history-item__stream">
+                        {% if result.stream %}{{ result.stream.icon }} {{ result.stream.name }}{% else %}Unknown{% endif %}
+                    </span>
+                    {% if result.llm_score %}
+                        {% if result.llm_score >= 8 %}
+                            <span class="history-item__score score-high">{{ result.llm_score }}/10</span>
+                        {% elif result.llm_score >= 5 %}
+                            <span class="history-item__score score-mid">{{ result.llm_score }}/10</span>
+                        {% else %}
+                            <span class="history-item__score score-low">{{ result.llm_score }}/10</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="history-item__score score-none">—</span>
+                    {% endif %}
+                </div>
+                <div class="history-item__date">{{ result.completed_at|date:"M d, Y  H:i" }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-history">
+            No interviews yet.<br>Choose a stream below to get started!
+        </div>
+        {% endif %}
+
+        <!-- Footer actions -->
+        <div class="sidebar__footer">
+            <a href="{% url 'dashboard' %}" class="btn-logout" style="margin-bottom:8px; color:#818cf8; border-color:rgba(99,102,241,0.25); background:rgba(99,102,241,0.07);">
+                🎙️ Open Coach Mode
+            </a>
+            <a href="{% url 'logout' %}" class="btn-logout" id="btn-logout">
+                ← Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════════ MAIN ═══════════════════════ -->
+    <main class="main">
+
+        <!-- Greeting -->
+        <div class="main__header">
+            <h1 class="main__greeting">
+                Hello, <span>{{ request.user.username }}</span> 👋
+            </h1>
+            <p class="main__sub">Choose an interview stream below to get started with your AI-powered session.</p>
+        </div>
+
+        <!-- Django messages -->
+        {% if messages %}
+        <ul class="alert-list">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <!-- Stream Grid -->
+        <p class="section-title">Available Interview Streams</p>
+
+        <div class="stream-grid" id="stream-grid">
+            {% for stream in streams %}
+            <div class="stream-card"
+                 id="stream-card-{{ stream.id }}"
+                 data-stream-id="{{ stream.id }}"
+                 data-stream-name="{{ stream.name }}"
+                 data-stream-icon="{{ stream.icon }}"
+                 data-stream-desc="{{ stream.description }}"
+                 role="button"
+                 tabindex="0"
+                 aria-label="Start {{ stream.name }} interview">
+                <div class="stream-card__icon">{{ stream.icon }}</div>
+                <div class="stream-card__name">{{ stream.name }}</div>
+                <div class="stream-card__desc">{{ stream.description }}</div>
+                <div class="stream-card__cta">Start Interview →</div>
+            </div>
+            {% empty %}
+            <p style="color: var(--text-muted); grid-column: 1/-1;">
+                No interview streams available yet.
+            </p>
+            {% endfor %}
+        </div>
+
+    </main>
+</div>
+
+<!-- ═══════════════════════ CONFIRMATION MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+        <div class="modal__icon" id="modal-icon">💻</div>
+        <h2 class="modal__title" id="modal-title">Start Interview?</h2>
+        <div class="modal__stream" id="modal-stream-name">Python</div>
+        <p class="modal__body">
+            Your camera and microphone will be activated. Speak your answers clearly.
+            When you're ready, click <strong>Start Interview</strong>.
+        </p>
+        <div class="modal__actions">
+            <button class="btn-cancel" id="btn-cancel">Cancel</button>
+            <button class="btn-start" id="btn-start">Start Interview</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const overlay       = document.getElementById('modal-overlay');
+        const modalIcon     = document.getElementById('modal-icon');
+        const modalName     = document.getElementById('modal-stream-name');
+        const btnCancel     = document.getElementById('btn-cancel');
+        const btnStart      = document.getElementById('btn-start');
+        const cards         = document.querySelectorAll('.stream-card');
+
+        let selectedStreamId = null;
+
+        function openModal(card) {
+            selectedStreamId = card.dataset.streamId;
+            modalIcon.textContent  = card.dataset.streamIcon;
+            modalName.textContent  = card.dataset.streamName;
+            overlay.classList.add('visible');
+            btnStart.focus();
+        }
+
+        function closeModal() {
+            overlay.classList.remove('visible');
+            selectedStreamId = null;
+        }
+
+        // Open modal on card click or Enter key
+        cards.forEach(card => {
+            card.addEventListener('click', () => openModal(card));
+            card.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openModal(card);
+                }
+            });
+        });
+
+        // Close on Cancel or clicking outside the modal box
+        btnCancel.addEventListener('click', closeModal);
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) closeModal();
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Confirm → redirect to interview page
+        btnStart.addEventListener('click', () => {
+            if (!selectedStreamId) return;
+            // Will route to /interview/<stream_id>/ once Step 3 is built
+            window.location.href = `/interview/${selectedStreamId}/`;
+        });
+    })();
+</script>
+
+</body>
+</html>

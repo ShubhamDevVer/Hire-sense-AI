@@ -1,0 +1,29 @@
+{% extends "coach/base_auth.html" %}
+
+{% block title %}Register — Hire Sense AI{% endblock %}
+
+{% block content %}
+<h1>Create your account</h1>
+<p class="auth-subtitle">Start your AI-powered interview journey</p>
+
+<form method="post" id="register-form">
+    {% csrf_token %}
+
+    {% for field in form %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+            <ul class="errorlist">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if field.help_text %}
+            <p class="help-text">{{ field.help_text }}</p>
+        {% endif %}
+    {% endfor %}
+
+    <button type="submit" class="btn-primary" id="btn-register">Create Account</button>
+</form>
+
+<p class="auth-footer">
+    Already have an account? <a href="{% url 'login' %}">Sign in</a>
+</p>
+{% endblock %}

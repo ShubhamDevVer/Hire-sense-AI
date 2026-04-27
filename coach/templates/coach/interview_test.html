@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hire Sense AI — {{ stream.name }} Interview Session">
+    <title>{{ stream.icon }} {{ stream.name }} Interview — Hire Sense AI</title>
+    <link rel="stylesheet" href="{% static 'coach/css/interview_test.css' %}">
+</head>
+<body>
+
+<!-- Hidden inputs so JS can read stream context -->
+<input type="hidden" id="stream-id"   value="{{ stream.id }}">
+<input type="hidden" id="stream-name" value="{{ stream.name }}">
+
+<!-- ══════════════════════ TOP BAR ══════════════════════ -->
+<header class="topbar">
+    <div class="topbar__left">
+        <a href="{% url 'candidate_dashboard' %}" class="topbar__brand">
+            <div class="topbar__logo">HS</div>
+            <div class="topbar__title">Hire<span>Sense</span> AI</div>
+        </a>
+        <div class="topbar__divider"></div>
+        <div class="topbar__stream-badge">
+            {{ stream.icon }} {{ stream.name }} Interview
+        </div>
+    </div>
+
+    <div class="topbar__right">
+        <div class="status-pill" id="video-status-pill">
+            <span class="dot" id="video-status-dot"></span>
+            Camera
+        </div>
+        <div class="status-pill" id="audio-status-pill">
+            <span class="dot" id="audio-status-dot"></span>
+            Mic
+        </div>
+    </div>
+</header>
+
+<!-- ══════════════════════ MAIN LAYOUT ══════════════════════ -->
+<div class="interview-layout">
+
+    <!-- ─── Question Card (full width) ─── -->
+    <div class="question-card">
+        <div class="question-card__label">❓ Your Question</div>
+        <div class="question-text loading" id="question-text">
+            Generating your {{ stream.name }} question…
+        </div>
+    </div>
+
+    <!-- ─── Left: Video Panel ─── -->
+    <div class="video-panel">
+        <div class="panel-title">📷 Live Camera Feed</div>
+
+        <div class="video-frame">
+            <canvas id="video-canvas"></canvas>
+            <div id="video-placeholder" class="video-placeholder">
+                <div class="video-placeholder__icon">📷</div>
+                <div>Activating camera…</div>
+            </div>
+        </div>
+
+        <!-- Vision score chips -->
+        <div class="vision-scores">
+            <div class="v-score">
+                <div class="v-score__val" id="score-val">—</div>
+                <div class="v-score__label">Confidence</div>
+            </div>
+            <div class="v-score">
+                <div class="v-score__val" id="emotion-val" style="font-size:1rem;">—</div>
+                <div class="v-score__label">Emotion</div>
+            </div>
+            <div class="v-score">
+                <div class="v-score__val" id="faces-val">—</div>
+                <div class="v-score__label">Faces</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Right: Audio / Response Panel ─── -->
+    <div class="audio-panel">
+        <div class="panel-title">🎙️ Your Answer</div>
+
+        <!-- Live transcript -->
+        <div id="transcript-box" class="transcript-box">
+            <span class="transcript-placeholder">Start speaking — your words will appear here in real time.</span>
+        </div>
+
+        <!-- Vocal metrics -->
+        <div>
+            <div class="metric-bar">
+                <div class="metric-bar__header">
+                    <span class="metric-bar__label">Vocal Smoothness</span>
+                    <span class="metric-bar__value" id="smoothness-value">0%</span>
+                </div>
+                <div class="metric-bar__track">
+                    <div class="metric-bar__fill fill-smoothness" id="smoothness-fill" style="width:0%"></div>
+                </div>
+            </div>
+
+            <div class="metric-bar">
+                <div class="metric-bar__header">
+                    <span class="metric-bar__label">Clarity</span>
+                    <span class="metric-bar__value" id="clarity-value">0%</span>
+                </div>
+                <div class="metric-bar__track">
+                    <div class="metric-bar__fill fill-clarity" id="clarity-fill" style="width:0%"></div>
+                </div>
+            </div>
+
+            <div class="metric-bar">
+                <div class="metric-bar__header">
+                    <span class="metric-bar__label">Tone Stability</span>
+                    <span class="metric-bar__value" id="tone-value">0%</span>
+                </div>
+                <div class="metric-bar__track">
+                    <div class="metric-bar__fill fill-tone" id="tone-fill" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit button -->
+        <button class="btn-submit" id="btn-submit" disabled>
+            ✅ Submit Answer
+        </button>
+    </div>
+
+</div>
+
+<!-- ══════════════════════ GRADING OVERLAY ══════════════════════ -->
+<div class="grading-overlay" id="grading-overlay">
+    <div class="grading-card">
+        <!-- Spinner (shown while grading) -->
+        <div id="grading-spinner">
+            <div class="spinner"></div>
+            <div class="grading-card__title">Grading Your Answer…</div>
+            <p class="grading-card__sub">Our AI is evaluating your response. This takes just a moment.</p>
+        </div>
+
+        <!-- Result (shown after grading) -->
+        <div id="grading-result" style="display:none;">
+            <div class="grading-card__icon">🏆</div>
+            <div class="grading-card__title">Interview Complete!</div>
+            <div class="score-display" id="grading-score">—</div>
+            <p class="grading-card__sub" id="grading-msg"></p>
+            <a href="{% url 'candidate_dashboard' %}" class="btn-done" id="btn-done">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════ SCRIPTS ══════════════════════ -->
+<script src="{% static 'coach/js/video_stream.js' %}"></script>
+<script src="{% static 'coach/js/audio_stream.js' %}"></script>
+<script src="{% static 'coach/js/interview.js' %}"></script>
+
+<script>
+/**
+ * Fetch the LLM-generated question via AJAX on page load.
+ * Step 4 will implement /generate-question/ endpoint.
+ * Until then, the question text stays as the loading placeholder.
+ */
+(async () => {
+    const streamId   = document.getElementById('stream-id').value;
+    const streamName = document.getElementById('stream-name').value;
+    const questionEl = document.getElementById('question-text');
+    const btnSubmit  = document.getElementById('btn-submit');
+
+    try {
+        const res = await fetch(`/generate-question/?stream_id=${streamId}`, {
+            headers: { 'X-CSRFToken': getCsrfToken() }
+        });
+        const data = await res.json();
+
+        if (data.question) {
+            questionEl.textContent = data.question;
+            questionEl.classList.remove('loading');
+            btnSubmit.disabled = false;   // Enable submit now that we have a question
+            btnSubmit.innerHTML = '✅ Submit Answer';
+        } else {
+            questionEl.textContent = `Tell me about your experience with ${streamName}.`;
+            questionEl.classList.remove('loading');
+            btnSubmit.disabled = false;
+        }
+    } catch (e) {
+        // Fallback if Step 4 endpoint not yet built
+        questionEl.textContent = `Explain a key concept in ${streamName} that you find most important.`;
+        questionEl.classList.remove('loading');
+        btnSubmit.disabled = false;
+    }
+
+    function getCsrfToken() {
+        const match = document.cookie.match(/(^| )csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[2]) : '';
+    }
+})();
+</script>
+
+</body>
+</html>

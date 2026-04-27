@@ -1,0 +1,36 @@
+{% extends "coach/base_auth.html" %}
+
+{% block title %}Login — Hire Sense AI{% endblock %}
+
+{% block content %}
+<h1>Welcome back</h1>
+<p class="auth-subtitle">Sign in to your Hire Sense AI account</p>
+
+<form method="post" id="login-form">
+    {% csrf_token %}
+
+    <label for="id_username">Username</label>
+    {{ form.username }}
+    {% if form.username.errors %}
+        <ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    <label for="id_password">Password</label>
+    {{ form.password }}
+    {% if form.password.errors %}
+        <ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+        <ul class="errorlist" style="margin-top:10px;">
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    <button type="submit" class="btn-primary" id="btn-login">Sign In</button>
+</form>
+
+<p class="auth-footer">
+    Don't have an account? <a href="{% url 'register' %}">Create one</a>
+</p>
+{% endblock %}

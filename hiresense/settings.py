@@ -31,9 +31,16 @@ DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = ["*"]  # Permissive for local dev; tighten in production
 
 # ---------------------------------------------------------------------------
-# Groq API key — loaded from .env, available via settings.GROQ_API_KEY
+# Groq API key — used by the Audio Engine for Whisper transcription
 # ---------------------------------------------------------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# ---------------------------------------------------------------------------
+# OpenRouter — used for LLM question generation and answer grading
+# ---------------------------------------------------------------------------
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL = "minimax/minimax-m2"   # min-max M2.5 on OpenRouter
 
 # ---------------------------------------------------------------------------
 # ML Model path
@@ -132,3 +139,10 @@ STATICFILES_DIRS = []  # APP_DIRS in INSTALLED_APPS handles coach/static/
 # Default primary key field type
 # ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Authentication redirects
+# ---------------------------------------------------------------------------
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/candidate/"
+LOGOUT_REDIRECT_URL = "/login/"

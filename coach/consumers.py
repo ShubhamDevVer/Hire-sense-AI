@@ -111,6 +111,8 @@ class AudioConsumer(AsyncWebsocketConsumer):
         self.chunks_skipped = 0
         self.groq_requests = 0
         self._worker_running = True
+        self._submitted = False          # True after candidate clicks Submit
+        self._vision_scores = []         # Collects scores for average confidence
 
         # Initialize optional components
         if librosa is not None:
@@ -141,10 +143,16 @@ class AudioConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """
-        Expects bytes_data: raw PCM int16 mono audio at 16kHz.
-        First 4 bytes = sample rate as uint32 little-endian.
+        Accepts two kinds of messages:
+          bytes_data — raw PCM int16 audio chunks (wire protocol: 4-byte SR + samples)
+          text_data  — JSON control messages:
+            { type: 'submit_answer' }              → candidate finished speaking
+            { type: 'vision_score', score: N }     → score from VideoConsumer for averaging
         """
         if bytes_data:
+            # Ignore new audio once candidate has submitted
+            if self._submitted:
+                return
             if len(bytes_data) < 6:
                 return
             sample_rate = struct.unpack("<I", bytes_data[:4])[0]
@@ -152,6 +160,43 @@ class AudioConsumer(AsyncWebsocketConsumer):
             pcm_array = np.frombuffer(pcm_bytes, dtype=np.int16)
             float_samples = pcm_array.astype(np.float32) / 32768.0
             self.audio_buffer.append(float_samples, sample_rate)
+            return
+
+        if text_data:
+            try:
+                msg = json.loads(text_data)
+            except json.JSONDecodeError:
+                return
+
+            msg_type = msg.get("type", "")
+
+            if msg_type == "submit_answer" and not self._submitted:
+                # Stop accepting audio
+                self._submitted = True
+                self._worker_running = False
+
+                # Build the full transcript from all accumulated lines
+                full_transcript = " ".join(self.transcript_lines).strip()
+
+                # Average vision confidence score collected during the session
+                avg_vision = (
+                    round(sum(self._vision_scores) / len(self._vision_scores), 2)
+                    if self._vision_scores else None
+                )
+
+                await self.send(text_data=json.dumps({
+                    "type": "final_transcript",
+                    "transcript": full_transcript,
+                    "avg_vision_score": avg_vision,
+                    "total_chunks": self.chunks_processed,
+                    "groq_requests": self.groq_requests,
+                }))
+
+            elif msg_type == "vision_score":
+                # Collect vision confidence scores sent by the interview page JS
+                score = msg.get("score")
+                if isinstance(score, (int, float)) and score > 0:
+                    self._vision_scores.append(float(score))
 
     async def _vad_worker(self):
         """Background loop: poll VAD, process complete phrases."""
